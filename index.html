@@ -331,12 +331,30 @@
             createDefaultPhoto();
 
             // *** Load Saved Photos ***
-            StorageManager.loadAllPhotos((imageUrl) => {
-                new THREE.TextureLoader().load(imageUrl, (t) => {
-                    t.colorSpace = THREE.SRGBColorSpace;
-                    addPhotoToScene(t);
-                });
-            });
+            // --- 核心修改：批量加载 30 张预设照片 ---
+            const PHOTO_COUNT = 30; // 照片总数
+            const PHOTO_DIR = 'memories/'; // 文件夹路径
+            const loader = new THREE.TextureLoader();
+
+            for (let i = 1; i <= PHOTO_COUNT; i++) {
+                const url = `${PHOTO_DIR}${i}.jpg`;
+                
+                loader.load(
+                    url,
+                    (texture) => {
+                        // 成功加载：设置色彩空间并加入场景
+                        texture.colorSpace = THREE.SRGBColorSpace;
+                        addPhotoToScene(texture);
+                        console.log(`成功挂载照片: ${url}`);
+                    },
+                    undefined, // 进度回调（可选）
+                    (err) => {
+                        // 失败处理：如果某张照片加载失败，不影响其他照片
+                        console.error(`无法找到照片: ${url}，请确认文件名和后缀是否正确。`);
+                    }
+                );
+            }
+            // ----------------------------------------
 
             // 5. Events & CV
             setupEvents();
@@ -649,4 +667,5 @@
         } /* 修复点2：这里已经干净了，删除了后面多余的代码 */
     </script>
 </body>
+
 </html>
