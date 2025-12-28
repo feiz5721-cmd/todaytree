@@ -173,15 +173,12 @@
         <h1>Merry Christmas</h1>
         
         <div class="upload-wrapper">
-    <label class="custom-file-upload">
-        <input type="file" id="imageUpload" accept="image/*">
-        ADD MEMORIES
-    </label>
-    
-    <button id="fullscreenBtn" class="fullscreen-toggle">ENTER FULLSCREEN</button>
-    
-    <div class="hint-text">Press 'H' to Hide UI | Press 'F' for Fullscreen</div>
-</div>
+            <label class="custom-file-upload">
+                <input type="file" id="imageUpload" accept="image/*">
+                ADD MEMORIES
+            </label>
+            <div class="hint-text">Press 'H' to Hide Controls | Gesture Control Active</div>
+        </div>
     </div>
 
     <div class="cv-hidden">
@@ -189,7 +186,7 @@
         <canvas id="output_canvas" width="160" height="120"></canvas>
     </div>
 
-     <script type="module">
+    <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
@@ -515,39 +512,6 @@ function calculateTreePosFromT(t) {
                 composer.setSize(window.innerWidth, window.innerHeight);
             });
 
-            const fullscreenBtn = document.getElementById('fullscreenBtn');
-
-            // 增强版全屏切换函数
-            function toggleFullscreen() {
-                if (!document.fullscreenElement) {
-                    // 进入全屏
-                    const docElm = document.documentElement;
-                    if (docElm.requestFullscreen) {
-                        docElm.requestFullscreen();
-                    } else if (docElm.mozRequestFullScreen) { /* Firefox */
-                        docElm.mozRequestFullScreen();
-                    } else if (docElm.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
-                        docElm.webkitRequestFullscreen();
-                    } else if (docElm.msRequestFullscreen) { /* IE/Edge */
-                        docElm.msRequestFullscreen();
-                    }
-                    fullscreenBtn.textContent = "EXIT FULLSCREEN";
-                } else {
-                    // 退出全屏
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    }
-                    fullscreenBtn.textContent = "ENTER FULLSCREEN";
-                }
-            }
-
-            // 监听按钮点击
-            fullscreenBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // 防止事件冒泡
-                toggleFullscreen();
-            });
-
-            // 键盘监听逻辑
             window.addEventListener('keydown', (e) => {
                 const key = e.key.toLowerCase();
                 if (key === 'h') {
@@ -558,36 +522,7 @@ function calculateTreePosFromT(t) {
                 if (key === 'c') {
                     StorageManager.clear();
                 }
-                if (key === 'f') {
-                    toggleFullscreen();
-                }
             });
-
-            // 文件上传逻辑 (现在正确地包含在函数内部)
-            const input = document.getElementById('imageUpload');
-            if (input) {
-                input.addEventListener('change', (e) => {
-                    const f = e.target.files[0];
-                    if (!f) return;
-                    StorageManager.savePhoto(f);
-                    const reader = new FileReader();
-                    reader.onload = (ev) => {
-                        new THREE.TextureLoader().load(ev.target.result, (t) => {
-                            t.colorSpace = THREE.SRGBColorSpace;
-                            addPhotoToScene(t, 1, 30); // 修正：传入索引参数
-                        });
-                    };
-                    reader.readAsDataURL(f);
-                });
-            }
-
-            // 监听全屏状态变化
-            document.addEventListener('fullscreenchange', () => {
-                if (!document.fullscreenElement) {
-                    fullscreenBtn.textContent = "ENTER FULLSCREEN";
-                }
-            });
-        } // 函数在这里正确结束
 
             const input = document.getElementById('imageUpload');
             input.addEventListener('change', (e) => {
@@ -784,15 +719,6 @@ if (STATE.hoveredPhotoIndex === i && STATE.mode !== 'FOCUS') {
         } /* 修复点2：这里已经干净了，删除了后面多余的代码 */
     </script>
 </body>
+
 </html>
-
-
-
-
-
-
-
-
-
-
 
