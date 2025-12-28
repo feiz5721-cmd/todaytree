@@ -578,61 +578,80 @@ function calculateTreePosFromT(t) {
         }
 
         function processGestures(result) {
-            STATE.hoveredPhotoIndex = -1;
+    STATE.hoveredPhotoIndex = -1; // 每一帧重置
 
-            if (!result.landmarks || result.landmarks.length === 0) return;
+    if (!result.landmarks || result.landmarks.length === 0) return;
 
-            const landmarks = result.landmarks[0]; 
-            const wrist = landmarks[0];
-            const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    const landmarks = result.landmarks[0]; 
+    const wrist = landmarks[0];
+    const dist = (p1, p2) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
 
-            const isIndexStraight = dist(landmarks[8], wrist) > dist(landmarks[5], wrist);
-            const isMiddleCurled = dist(landmarks[12], wrist) < dist(landmarks[9], wrist);
-            const isRingCurled = dist(landmarks[16], wrist) < dist(landmarks[13], wrist);
-            const isPinkyCurled = dist(landmarks[20], wrist) < dist(landmarks[17], wrist);
+    // --- 1. 优化的手势判定 (提高容错率) ---
+    // 只要食指伸出长度明显超过其他指尖，即视为指向模式
+    const isIndexStraight = dist(landmarks[8], wrist) > dist(landmarks[6], wrist) * 1.2;
+    const isMiddleCurled = dist(landmarks[12], wrist) < dist(landmarks[10], wrist);
+    const isRingCurled = dist(landmarks[16], wrist) < dist(landmarks[14], wrist);
 
-            const isPointing = isIndexStraight && isMiddleCurled && isRingCurled && isPinkyCurled;
+    // 只要食指直，中指和无名指稍微弯曲就触发，不再要求握死拳头，提高舒适度
+    const isPointing = isIndexStraight && isMiddleCurled && isRingCurled;
 
-            if (isPointing && STATE.mode !== 'FOCUS') {
-                const ndcFingerX = (1 - landmarks[8].x) * 2 - 1; 
-                const ndcFingerY = -(landmarks[8].y * 2 - 1); 
+    if (isPointing && STATE.mode !== 'FOCUS') {
+        // --- 2. 精确的坐标映射 (核心修正) ---
+        // MediaPipe x轴是镜像的 (1-x)，y轴向下。转换为 Three.js NDC (-1 到 1)
+        const ndcFingerX = (1 - landmarks[8].x) * 2 - 1; 
+        const ndcFingerY = -(landmarks[8].y * 2 - 1); 
 
-                let minDistance = Infinity;
-                let closestIndex = -1;
+        let minDistance = Infinity;
+        let closestIndex = -1;
 
-                particles.forEach((p, i) => {
-                    if (p.userData.type === 'PHOTO') {
-                        const screenPos = getScreenPosition(p);
-                        const d = Math.hypot(screenPos.x - ndcFingerX, screenPos.y - ndcFingerY);
-                        if (d < 0.2 && d < minDistance) {
-                            minDistance = d;
-                            closestIndex = i;
-                        }
-                    }
-                });
-                STATE.hoveredPhotoIndex = closestIndex;
-            } else {
-                STATE.targetRotation.x = (landmarks[9].y - 0.5) * 1;
-                STATE.targetRotation.y = (landmarks[9].x - 0.5) * 2;
+        // --- 3. 扩大搜索半径 (判定面积增加 2 倍) ---
+        // 这里的阈值从 0.2 增加到 0.4，让“盲操”更容易选中
+        const SELECTION_THRESHOLD = 0.4; 
 
-                const pinchDist = dist(landmarks[4], landmarks[8]);
-                let avgTipToWrist = 0;
-                [8, 12, 16, 20].forEach(i => avgTipToWrist += dist(landmarks[i], wrist));
-                avgTipToWrist /= 4;
-
-                if (pinchDist < 0.05) {
-                    if (STATE.mode !== 'FOCUS') {
-                        STATE.mode = 'FOCUS';
-                        const photoIndices = particles.map((p, i) => p.userData.type === 'PHOTO' ? i : -1).filter(i => i !== -1);
-                        if (photoIndices.length > 0) STATE.focusedPhotoIndex = photoIndices[Math.floor(Math.random() * photoIndices.length)];
-                    }
-                } else if (avgTipToWrist < 0.25) {
-                    STATE.mode = 'TREE';
-                } else if (avgTipToWrist > 0.4) {
-                    STATE.mode = 'SCATTER';
+        particles.forEach((p, i) => {
+            if (p.userData.type === 'PHOTO') {
+                const screenPos = getScreenPosition(p);
+                // 计算屏幕投影距离
+                const d = Math.hypot(screenPos.x - ndcFingerX, screenPos.y - ndcFingerY);
+                
+                if (d < SELECTION_THRESHOLD && d < minDistance) {
+                    minDistance = d;
+                    closestIndex = i;
                 }
             }
+        });
+
+        // 稳定性过滤：只有当选中目标连续几帧一致时再更新（可选，这里先用直接赋值保证灵敏度）
+        STATE.hoveredPhotoIndex = closestIndex;
+        
+    } else {
+        // 非指向模式，恢复常规交互
+        STATE.targetRotation.x = (landmarks[9].y - 0.5) * 1;
+        STATE.targetRotation.y = (landmarks[9].x - 0.5) * 2;
+
+        const pinchDist = dist(landmarks[4], landmarks[8]);
+        let avgTipToWrist = 0;
+        [8, 12, 16, 20].forEach(i => avgTipToWrist += dist(landmarks[i], wrist));
+        avgTipToWrist /= 4;
+
+        if (pinchDist < 0.05) {
+            if (STATE.mode !== 'FOCUS') {
+                STATE.mode = 'FOCUS';
+                const photoIndices = particles.map((p, i) => p.userData.type === 'PHOTO' ? i : -1).filter(i => i !== -1);
+                if (photoIndices.length > 0) {
+                    // 优先 Focus 当前正在悬停的那张
+                    STATE.focusedPhotoIndex = (STATE.hoveredPhotoIndex !== -1) ? 
+                                              STATE.hoveredPhotoIndex : 
+                                              photoIndices[Math.floor(Math.random() * photoIndices.length)];
+                }
+            }
+        } else if (avgTipToWrist < 0.25) {
+            STATE.mode = 'TREE';
+        } else if (avgTipToWrist > 0.4) {
+            STATE.mode = 'SCATTER';
         }
+    }
+}
 
         function animate() {
             requestAnimationFrame(animate);
@@ -672,14 +691,22 @@ function calculateTreePosFromT(t) {
                     targetPos.copy(data.scatterPos).multiplyScalar(1.5);
                 }
 
-                if (STATE.hoveredPhotoIndex === i && STATE.mode !== 'FOCUS') {
-                    targetScale.multiplyScalar(2.5);
-                    targetPos.add(p.position.clone().normalize().multiplyScalar(2)); 
-                    p.lookAt(camera.position);
-                }
-
-                p.position.lerp(targetPos, 0.03);
-                p.scale.lerp(targetScale, 0.1); 
+                // 在 animate 函数的循环里修改这一段
+if (STATE.hoveredPhotoIndex === i && STATE.mode !== 'FOCUS') {
+    // 放大倍数增加，交互感更强
+    targetScale.multiplyScalar(3.5); 
+    // 让选中的照片“跳”出树群，移动到离相机更近的地方
+    targetPos.add(p.position.clone().normalize().multiplyScalar(4)); 
+    p.lookAt(camera.position);
+    
+    // 灵敏度修复：针对 Hover 状态使用更快的插值
+    p.position.lerp(targetPos, 0.2); // 从 0.03 提高到 0.2
+    p.scale.lerp(targetScale, 0.3);  // 快速放大
+} else {
+    // 普通粒子的平滑移动
+    p.position.lerp(targetPos, 0.03);
+    p.scale.lerp(targetScale, 0.1);
+}
 
                 if (STATE.mode !== 'SCATTER' && !(STATE.mode === 'FOCUS' && i === STATE.focusedPhotoIndex) && i !== STATE.hoveredPhotoIndex) {
                      p.rotation.x = THREE.MathUtils.lerp(p.rotation.x, 0, 0.05);
@@ -694,4 +721,5 @@ function calculateTreePosFromT(t) {
 </body>
 
 </html>
+
 
