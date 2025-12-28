@@ -15,28 +15,7 @@
             --gold: #d4af37;
             --cream: #fceea7;
         }
-/* 全屏按钮样式 */
-.fullscreen-toggle {
-    display: inline-block;
-    padding: 12px 30px;
-    cursor: pointer;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--gold);
-    color: var(--gold);
-    font-family: 'Cinzel', serif;
-    font-size: 14px;
-    letter-spacing: 2px;
-    transition: all 0.3s ease;
-    border-radius: 2px;
-    margin-top: 10px; /* 与上传按钮拉开距离 */
-    pointer-events: auto;
-}
 
-.fullscreen-toggle:hover {
-    background: rgba(212, 175, 55, 0.2);
-    box-shadow: 0 0 15px var(--gold);
-}
         body {
             margin: 0;
             overflow: hidden;
@@ -182,6 +161,8 @@
         }
     }
     </script>
+</head>
+<body>
 
     <div id="loader">
         <div class="spinner"></div>
@@ -191,30 +172,18 @@
     <div id="ui-container">
         <h1>Merry Christmas</h1>
         
-       <div class="upload-wrapper">
-    <label class="custom-file-upload">
-        <input type="file" id="imageUpload" accept="image/*">
-        ADD MEMORIES
-    </label>
-    
-    <button id="fullscreenBtn" class="fullscreen-toggle">ENTER FULLSCREEN</button>
-    
-    <div class="hint-text">Press 'H' to Hide UI | Press 'F' for Fullscreen</div>
-</div>
+        <div class="upload-wrapper">
+            <label class="custom-file-upload">
+                <input type="file" id="imageUpload" accept="image/*">
+                ADD MEMORIES
+            </label>
+            <div class="hint-text">Press 'H' to Hide Controls | Gesture Control Active</div>
+        </div>
     </div>
 
     <div class="cv-hidden">
         <video id="webcam" autoplay playsinline></video>
         <canvas id="output_canvas" width="160" height="120"></canvas>
-    </div>
-
-    <style>
-        :root {
-            --bg-color: #000000;
-            --gold: #d4af37;
-            --cream: #fceea7;
-        }
-
     </div>
 
      <script type="module">
@@ -813,6 +782,7 @@ if (STATE.hoveredPhotoIndex === i && STATE.mode !== 'FOCUS') {
     </script>
 </body>
 </html>
+
 
 
 
