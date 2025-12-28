@@ -455,7 +455,7 @@
 
         // --- 事件监听 (核心修复区域) ---
         function setupEvents() {
-            // Resize
+            // 1. 窗口大小调整监听
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
@@ -463,59 +463,65 @@
                 composer.setSize(window.innerWidth, window.innerHeight);
             });
 
-            // 全屏逻辑
-            const fullscreenBtn = document.getElementById('fullscreenBtn');
-            const toggleFullscreen = () => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(e => console.warn(e));
-                    fullscreenBtn.textContent = "EXIT FULLSCREEN";
-                } else {
-                    if (document.exitFullscreen) document.exitFullscreen();
-                    fullscreenBtn.textContent = "ENTER FULLSCREEN";
-                }
-            };
+            // 2. 获取 UI 元素（增加安全检查）
+            const fsBtn = document.getElementById('fullscreenBtn');
+            const imgInput = document.getElementById('imageUpload');
 
-            fullscreenBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                toggleFullscreen();
-            });
+            // --- 全屏功能 ---
+            if (fsBtn) {
+                const toggleFS = () => {
+                    if (!document.fullscreenElement) {
+                        document.documentElement.requestFullscreen().catch(e => console.warn(e));
+                        fsBtn.textContent = "EXIT FULLSCREEN";
+                    } else {
+                        if (document.exitFullscreen) document.exitFullscreen();
+                        fsBtn.textContent = "ENTER FULLSCREEN";
+                    }
+                };
+                fsBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFS(); });
+                
+                // 键盘 F 键
+                window.addEventListener('keydown', (e) => {
+                    if (e.key.toLowerCase() === 'f') toggleFS();
+                });
+                
+                // 状态同步
+                document.addEventListener('fullscreenchange', () => {
+                    if (!document.fullscreenElement) fsBtn.textContent = "ENTER FULLSCREEN";
+                });
+            } else {
+                console.warn("⚠️ Warning: Fullscreen button not found in HTML.");
+            }
 
-            // 键盘逻辑
+            // --- 键盘通用逻辑 ---
             window.addEventListener('keydown', (e) => {
-                const key = e.key.toLowerCase();
-                if (key === 'h') {
-                    uiVisible = !uiVisible;
+                const k = e.key.toLowerCase();
+                if (k === 'h') { 
+                    uiVisible = !uiVisible; 
                     const ui = document.getElementById('ui-container');
-                    uiVisible ? ui.classList.remove('ui-hidden') : ui.classList.add('ui-hidden');
+                    if(ui) ui.style.opacity = uiVisible ? 1 : 0; 
                 }
-                if (key === 'c') StorageManager.clear();
-                if (key === 'f') toggleFullscreen();
+                if (k === 'c') StorageManager.clear();
             });
 
-            // 文件上传逻辑 (现在正确地包含在函数内部)
-            const input = document.getElementById('imageUpload');
-            if (input) {
-                input.addEventListener('change', (e) => {
+            // --- 图片上传功能 ---
+            if (imgInput) {
+                imgInput.addEventListener('change', (e) => {
                     const f = e.target.files[0];
                     if (!f) return;
                     StorageManager.savePhoto(f);
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        new THREE.TextureLoader().load(ev.target.result, (t) => {
-                            t.colorSpace = THREE.SRGBColorSpace;
-                            addPhotoToScene(t);
+                        new THREE.TextureLoader().load(ev.target.result, (t) => { 
+                            t.colorSpace = THREE.SRGBColorSpace; 
+                            addPhotoToScene(t); 
                         });
                     };
                     reader.readAsDataURL(f);
                 });
+            } else {
+                console.error("❌ Error: Image upload input (#imageUpload) not found!");
             }
-
-            // 全屏状态监听
-            document.addEventListener('fullscreenchange', () => {
-                if (!document.fullscreenElement) {
-                    fullscreenBtn.textContent = "ENTER FULLSCREEN";
-                }
-            });
         }
 
         // --- MediaPipe & 动画 ---
@@ -650,5 +656,6 @@
 </body>
 
 </html>
+
 
 
