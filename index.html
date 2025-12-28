@@ -175,15 +175,15 @@
         <div id="ui-container">
         <h1>Merry Christmas</h1>
         <div class="upload-wrapper">
-            <label class="custom-file-upload">
-                <input type="file" id="imageUpload" accept="image/*">
-                ADD MEMORIES
-            </label>
-            
-            <button id="fullscreenBtn" class="fullscreen-toggle">ENTER FULLSCREEN</button>
-            
-            <div class="hint-text">Press 'H' to Hide UI | Press 'F' for Fullscreen</div>
-        </div>
+    <label class="custom-file-upload">
+        <input type="file" id="imageUpload" accept="image/*">
+        ADD MEMORIES
+    </label>
+    
+    <button id="fullscreenBtn" class="fullscreen-toggle">ENTER FULLSCREEN</button>
+    
+    <div class="hint-text">Press 'H' to Hide UI | Press 'F' for Fullscreen</div>
+</div>
     </div>
 
     <div class="cv-hidden">
@@ -455,72 +455,81 @@
 
         // --- 事件监听 (核心修复区域) ---
         function setupEvents() {
-            // 1. 窗口大小调整监听
+            // 1. 窗口大小自适应
             window.addEventListener('resize', () => {
+                if (!camera || !renderer || !composer) return; // 防止未初始化报错
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 composer.setSize(window.innerWidth, window.innerHeight);
             });
 
-            // 2. 获取 UI 元素（增加安全检查）
+            // 2. 获取 DOM 元素
             const fsBtn = document.getElementById('fullscreenBtn');
             const imgInput = document.getElementById('imageUpload');
 
-            // --- 全屏功能 ---
+            // --- 全屏功能 (带安全检查) ---
             if (fsBtn) {
+                // 定义切换逻辑
                 const toggleFS = () => {
                     if (!document.fullscreenElement) {
-                        document.documentElement.requestFullscreen().catch(e => console.warn(e));
+                        document.documentElement.requestFullscreen().catch(e => console.warn("全屏被拦截:", e));
                         fsBtn.textContent = "EXIT FULLSCREEN";
                     } else {
                         if (document.exitFullscreen) document.exitFullscreen();
                         fsBtn.textContent = "ENTER FULLSCREEN";
                     }
                 };
-                fsBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleFS(); });
-                
-                // 键盘 F 键
+
+                // 绑定点击事件
+                fsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // 防止点击穿透
+                    toggleFS();
+                });
+
+                // 绑定键盘 F 键
                 window.addEventListener('keydown', (e) => {
                     if (e.key.toLowerCase() === 'f') toggleFS();
                 });
-                
-                // 状态同步
+
+                // 监听浏览器原生全屏变化（如按 Esc 退出时同步按钮文字）
                 document.addEventListener('fullscreenchange', () => {
-                    if (!document.fullscreenElement) fsBtn.textContent = "ENTER FULLSCREEN";
+                    fsBtn.textContent = document.fullscreenElement ? "EXIT FULLSCREEN" : "ENTER FULLSCREEN";
                 });
             } else {
-                console.warn("⚠️ Warning: Fullscreen button not found in HTML.");
+                console.warn("⚠️ 检测到 HTML 中缺失 id='fullscreenBtn' 的按钮，全屏功能已禁用，但不影响主程序运行。");
             }
 
-            // --- 键盘通用逻辑 ---
+            // --- 通用键盘逻辑 ---
             window.addEventListener('keydown', (e) => {
                 const k = e.key.toLowerCase();
-                if (k === 'h') { 
-                    uiVisible = !uiVisible; 
+                if (k === 'h') {
+                    uiVisible = !uiVisible;
                     const ui = document.getElementById('ui-container');
-                    if(ui) ui.style.opacity = uiVisible ? 1 : 0; 
+                    if (ui) ui.style.opacity = uiVisible ? 1 : 0;
                 }
                 if (k === 'c') StorageManager.clear();
             });
 
-            // --- 图片上传功能 ---
+            // --- 图片上传功能 (带安全检查) ---
             if (imgInput) {
                 imgInput.addEventListener('change', (e) => {
                     const f = e.target.files[0];
                     if (!f) return;
+                    
+                    // 保存并加载
                     StorageManager.savePhoto(f);
                     const reader = new FileReader();
                     reader.onload = (ev) => {
-                        new THREE.TextureLoader().load(ev.target.result, (t) => { 
-                            t.colorSpace = THREE.SRGBColorSpace; 
-                            addPhotoToScene(t); 
+                        new THREE.TextureLoader().load(ev.target.result, (t) => {
+                            t.colorSpace = THREE.SRGBColorSpace;
+                            addPhotoToScene(t); // 此时已无需传索引，随机位置即可
                         });
                     };
                     reader.readAsDataURL(f);
                 });
             } else {
-                console.error("❌ Error: Image upload input (#imageUpload) not found!");
+                console.error("❌ 严重错误: HTML 中缺失 id='imageUpload' 的上传控件！");
             }
         }
 
@@ -656,6 +665,7 @@
 </body>
 
 </html>
+
 
 
 
