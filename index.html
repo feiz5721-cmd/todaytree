@@ -529,46 +529,86 @@ function calculateTreePosFromT(t) {
         }
 
         function setupEvents() {
-    // ... 原有的 resize 和文件上传逻辑 ...
-
-    const fullscreenBtn = document.getElementById('fullscreenBtn');
-
-    // 全屏切换函数
-    function toggleFullscreen() {
-        if (!document.fullscreenElement) {
-            // 请求进入全屏
-            document.documentElement.requestFullscreen().catch(err => {
-                console.warn(`无法进入全屏: ${err.message}`);
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                composer.setSize(window.innerWidth, window.innerHeight);
             });
-            fullscreenBtn.textContent = "EXIT FULLSCREEN";
-        } else {
-            // 退出全屏
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
+
+            const fullscreenBtn = document.getElementById('fullscreenBtn');
+
+            // 增强版全屏切换函数
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    // 进入全屏
+                    const docElm = document.documentElement;
+                    if (docElm.requestFullscreen) {
+                        docElm.requestFullscreen();
+                    } else if (docElm.mozRequestFullScreen) { /* Firefox */
+                        docElm.mozRequestFullScreen();
+                    } else if (docElm.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+                        docElm.webkitRequestFullscreen();
+                    } else if (docElm.msRequestFullscreen) { /* IE/Edge */
+                        docElm.msRequestFullscreen();
+                    }
+                    fullscreenBtn.textContent = "EXIT FULLSCREEN";
+                } else {
+                    // 退出全屏
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                    fullscreenBtn.textContent = "ENTER FULLSCREEN";
+                }
             }
-            fullscreenBtn.textContent = "ENTER FULLSCREEN";
-        }
-    }
 
-    // 监听按钮点击
-    fullscreenBtn.addEventListener('click', toggleFullscreen);
+            // 监听按钮点击
+            fullscreenBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // 防止事件冒泡
+                toggleFullscreen();
+            });
 
-    // 监听键盘 'F' 键
-    window.addEventListener('keydown', (e) => {
-        const key = e.key.toLowerCase();
-        if (key === 'f') {
-            toggleFullscreen();
-        }
-        // ... 原有的 'H' 和 'C' 键逻辑 ...
-    });
+            // 键盘监听逻辑
+            window.addEventListener('keydown', (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'h') {
+                    uiVisible = !uiVisible;
+                    const ui = document.getElementById('ui-container');
+                    uiVisible ? ui.classList.remove('ui-hidden') : ui.classList.add('ui-hidden');
+                }
+                if (key === 'c') {
+                    StorageManager.clear();
+                }
+                if (key === 'f') {
+                    toggleFullscreen();
+                }
+            });
 
-    // 监听全屏状态变化（防止用户按 Esc 退出后按钮文字不匹配）
-    document.addEventListener('fullscreenchange', () => {
-        if (!document.fullscreenElement) {
-            fullscreenBtn.textContent = "ENTER FULLSCREEN";
-        }
-    });
-}
+            // 文件上传逻辑 (现在正确地包含在函数内部)
+            const input = document.getElementById('imageUpload');
+            if (input) {
+                input.addEventListener('change', (e) => {
+                    const f = e.target.files[0];
+                    if (!f) return;
+                    StorageManager.savePhoto(f);
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        new THREE.TextureLoader().load(ev.target.result, (t) => {
+                            t.colorSpace = THREE.SRGBColorSpace;
+                            addPhotoToScene(t, 1, 30); // 修正：传入索引参数
+                        });
+                    };
+                    reader.readAsDataURL(f);
+                });
+            }
+
+            // 监听全屏状态变化
+            document.addEventListener('fullscreenchange', () => {
+                if (!document.fullscreenElement) {
+                    fullscreenBtn.textContent = "ENTER FULLSCREEN";
+                }
+            });
+        } // 函数在这里正确结束
 
             const input = document.getElementById('imageUpload');
             input.addEventListener('change', (e) => {
@@ -767,6 +807,7 @@ if (STATE.hoveredPhotoIndex === i && STATE.mode !== 'FOCUS') {
 </body>
 
 </html>
+
 
 
 
